@@ -141,10 +141,10 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar appbar = findViewById(R.id.toolbar);
         setSupportActionBar(appbar);
+        appbar.setBackgroundColor(Color.BLUE);
+        appbar.setLogo(R.drawable.music);
         appbar.setTitle("Music Player Lite");
-        appbar.setTitleTextColor(Color.WHITE); // Đổi màu chữ Toolbar cho dễ nhìn trên nền tối (tùy chọn)
-        appbar.setLogo(R.drawable.music); // Thay R.drawable.music bằng ID icon của bạn
-        appbar.setBackgroundColor(ContextCompat.getColor(this, R.color.purple_700)); // Thay màu Toolbar
+        appbar.setTitleTextColor(Color.WHITE);
         appbar.setSubtitleTextColor(Color.WHITE);
 
         ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
