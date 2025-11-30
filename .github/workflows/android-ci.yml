@@ -1,0 +1,54 @@
+name: Android CI
+
+on:
+  push:
+    branches:
+      - '**'
+  pull_request:
+    branches:
+      - '**'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      JAVA_VERSION: '11'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Cache Gradle wrapper and caches
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+            ~/.gradle/native
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/gradle-wrapper.properties') }}-${{ hashFiles('**/build.gradle*','**/settings.gradle*') }}
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x ./gradlew
+
+      - name: Build (assembleDebug) & run unit tests
+        run: ./gradlew clean assembleDebug test --console=plain
+        # Nếu bạn muốn chạy kiểm tra khác (lint, ktlint...), thêm task tại đây
+
+      - name: Run Lint
+        run: ./gradlew lint --console=plain || true
+        # Lint có thể return non-zero; nếu bạn muốn fail build khi lint lỗi, bỏ "|| true"
+
+      - name: Upload build artifacts (debug APK / outputs)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: debug-apks
+          path: |
+            app/build/outputs/**/*.apk
+            app/build/outputs/**/*.aab
