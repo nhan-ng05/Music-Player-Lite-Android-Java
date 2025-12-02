@@ -4,6 +4,7 @@ import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -28,16 +29,25 @@ import java.util.Locale;
 
 public class MainActivity extends AppCompatActivity {
     private static final int MY_PERMISSION_REQUEST = 100;
+    final String musicFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath();
 
+    // Logic kiểm tra quyền trong MainActivity.java
     private void checkPermissions() {
-        // Chỉ cần xin quyền READ_EXTERNAL_STORAGE cho Android 12 trở xuống.
-        // Android 13+ không yêu cầu quyền này cho MediaStore nữa (chỉ cần READ_MEDIA_AUDIO)
-        // nhưng khai báo READ_EXTERNAL_STORAGE vẫn hoạt động với tính tương thích ngược.
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, MY_PERMISSION_REQUEST);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // TIRAMISU = API 33
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_MEDIA_AUDIO) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_MEDIA_AUDIO}, MY_PERMISSION_REQUEST);
+            } else {
+                loadMusicFiles();
+            }
         } else {
-            loadMusicFiles();
+            // Logic cho Android < 13
+            if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
+                ActivityCompat.requestPermissions(this,
+                        new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, MY_PERMISSION_REQUEST);
+            } else {
+                loadMusicFiles();
+            }
         }
     }
 
@@ -73,7 +83,7 @@ public class MainActivity extends AppCompatActivity {
                 // Lọc để chỉ lấy các file nằm trong thư mục /Music/
                 // Điều kiện này giúp thu hẹp phạm vi, mặc dù MediaStore đã làm rất tốt.
                 // Lưu ý: path.contains("/Music/") có thể không chính xác 100% trên mọi thiết bị.
-                if (path != null && path.contains(Environment.DIRECTORY_MUSIC)) {
+                if (path != null && path.startsWith(musicFolderPath)) {
 
                     String duration = formatDuration(durationMs);
 
