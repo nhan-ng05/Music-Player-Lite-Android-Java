@@ -14,10 +14,16 @@ import java.util.List;
 public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder> {
     // final vì không cần thêm xoá bài
     private final List<Song> songList;
+    private OnSongClickListener listener;
+
+    public interface OnSongClickListener {
+        void onSongClick(Song song);
+    }
 
     // Constructor: Nhận danh sách dữ liệu để hiển thị
-    public SongAdapter(List<Song> songList) {
+    public SongAdapter(List<Song> songList,OnSongClickListener listener) {
         this.songList = songList;
+        this.listener = listener;
     }
 
     // Lớp ViewHolder: Giữ tham chiếu đến các View con (TextView, ImageView...) trong một mục
@@ -66,6 +72,10 @@ public class SongAdapter extends RecyclerView.Adapter<SongAdapter.SongViewHolder
         // hoặc đặt chúng vào các TextView riêng biệt như trong item_song.xml
         holder.tvArtist.setText(currentSong.getArtist());
         holder.tvDuration.setText(currentSong.getDuration());
+
+        holder.itemView.setOnClickListener(v -> {
+            listener.onSongClick(songList.get(position));
+        });
     }
 
     // 3. getItemCount: Trả về tổng số mục trong danh sách

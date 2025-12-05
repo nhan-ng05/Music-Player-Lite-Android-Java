@@ -1,5 +1,8 @@
 package com.example.musicplayerlite;
 
+import android.content.ComponentName;
+import android.content.Intent;
+import android.content.ServiceConnection;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Color;
@@ -7,8 +10,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.IBinder;
 import android.provider.MediaStore;
 import android.Manifest;
+import android.util.Log;
 import android.widget.Toast;
 
 import androidx.activity.EdgeToEdge;
@@ -27,9 +32,29 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Locale;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements SongAdapter.OnSongClickListener{
     private static final int MY_PERMISSION_REQUEST = 100;
     final String musicFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath();
+    private MusicService musicService;
+    private boolean isBound = false;
+
+    private ServiceConnection serviceConnection = new ServiceConnection() {
+        @Override
+        public void onServiceConnected(ComponentName name, IBinder service) {
+            MusicService.MusicBinder binder = (MusicService.MusicBinder) service;
+            musicService = binder.getService();
+            isBound = true;
+            // Service đã sẵn sàng để được sử dụng
+            Log.d("MainActivity", "MusicService đã kết nối thành công.");
+        }
+
+        @Override
+        public void onServiceDisconnected(ComponentName name) {
+            isBound = false;
+            musicService = null;
+            Log.d("MainActivity", "MusicService đã bị ngắt kết nối.");
+        }
+    };
 
     // Logic kiểm tra quyền trong MainActivity.java
     private void checkPermissions() {
@@ -51,6 +76,20 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+    @Override
+    public void onSongClick(Song song) {
+        // 1. Khởi động Service (Giữ nguyên)
+        Intent serviceIntent = new Intent(this, MusicService.class);
+        serviceIntent.putExtra("SONG_URI", song.getContentUri().toString());
+        serviceIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+        ContextCompat.startForegroundService(this, serviceIntent);
+
+        // 2. KHỞI CHẠY PLAYBACK ACTIVITY MỚI
+        Intent playbackIntent = new Intent(this, PlaybackActivity.class);
+        // Có thể truyền thêm dữ liệu bài hát nếu cần (dạng Parcelable hoặc chỉ Title/Artist)
+        startActivity(playbackIntent);
+    }
+
     // Phương thức load nhạc sử dụng MediaStore
     private void loadMusicFiles() {
         ArrayList<Song> songsList = new ArrayList<>();
@@ -60,6 +99,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 2. Các cột dữ liệu bạn muốn truy vấn
         String[] projection = {
+                MediaStore.Audio.Media._ID,
                 MediaStore.Audio.Media.DATA,       // Đường dẫn file (Dùng để lọc thư mục)
                 MediaStore.Audio.Media.TITLE,      // Tên bài hát (ID3 tag)
                 MediaStore.Audio.Media.ARTIST,     // Tên ca sĩ (ID3 tag)
@@ -75,10 +115,11 @@ public class MainActivity extends AppCompatActivity {
 
         if (cursor != null) {
             while (cursor.moveToNext()) {
-                String path = cursor.getString(0);
-                String title = cursor.getString(1);
-                String artist = cursor.getString(2);
-                long durationMs = cursor.getLong(3);
+                long id = cursor.getLong(0);
+                String path = cursor.getString(1);
+                String title = cursor.getString(2);
+                String artist = cursor.getString(3);
+                long durationMs = cursor.getLong(4);
 
                 // Lọc để chỉ lấy các file nằm trong thư mục /Music/
                 // Điều kiện này giúp thu hẹp phạm vi, mặc dù MediaStore đã làm rất tốt.
@@ -95,7 +136,7 @@ public class MainActivity extends AppCompatActivity {
                         artist = "<Unknown>";
                     }
 
-                    Song song = new Song(path, title, artist, duration);
+                    Song song = new Song(id, path, title, artist, duration);
                     songsList.add(song);
                 }
             }
@@ -137,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
 
         // 3. Thiết lập Adapter
-        SongAdapter adapter = new SongAdapter(songsList);
+        SongAdapter adapter = new SongAdapter(songsList,this);
         recyclerView.setAdapter(adapter);
 
         Toast.makeText(this, "Đã tải " + songsList.size() + " bài hát.", Toast.LENGTH_SHORT).show();
@@ -165,5 +206,24 @@ public class MainActivity extends AppCompatActivity {
 
         // <<< BƯỚC 5: GỌI HÀM KIỂM TRA QUYỀN VÀ TẢI NHẠC >>>
         checkPermissions();
+    }
+
+    // Trong MainActivity.java
+    @Override
+    protected void onStart() {
+        super.onStart();
+        // Bắt đầu liên kết Service khi Activity hiển thị
+        Intent intent = new Intent(this, MusicService.class);
+        bindService(intent, serviceConnection, BIND_AUTO_CREATE);
+    }
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        // Ngắt liên kết Service khi Activity không hiển thị
+        if (isBound) {
+            unbindService(serviceConnection);
+            isBound = false;
+        }
     }
 }
