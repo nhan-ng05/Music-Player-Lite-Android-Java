@@ -1,5 +1,6 @@
 package com.example.musicplayerlite;
 
+import android.annotation.SuppressLint;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
@@ -113,8 +114,42 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         }
     }
 
+    @SuppressLint("NewApi")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
+        // 1. NHẬN DANH SÁCH BÀI HÁT VÀ INDEX MỚI (Từ MainActivity)
+        if (intent != null && intent.hasExtra("SONGS_LIST") && intent.hasExtra("SONG_INDEX")) {
+
+            int newIndex = intent.getIntExtra("SONG_INDEX", 0);
+            List<Song> newSongsList = null;
+
+            // 1a. Nhận danh sách bài hát
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                // Dùng phương thức an toàn (API 33+)
+                newSongsList = intent.getParcelableArrayListExtra("SONGS_LIST", Song.class);
+            } else {
+                // Dùng phương thức cũ (Dưới API 33)
+                // 🔥 KHẮC PHỤC LỖI: SỬ DỤNG @SuppressWarnings ĐỂ KHẮC PHỤC LỖI ÉP KIỂU
+                @SuppressWarnings("unchecked")
+                ArrayList<Song> parcelableList = (ArrayList<Song>) intent.getParcelableArrayListExtra("SONGS_LIST", Song.class);
+                newSongsList = parcelableList;
+            }
+
+            // 1b. Cập nhật songsList chỉ khi danh sách mới được nhận
+            if (newSongsList != null && !newSongsList.isEmpty()) {
+                songsList = newSongsList;
+            }
+
+            // 1c. Kiểm tra và Phát bài hát mới nếu Index thay đổi
+            if (songsList != null && !songsList.isEmpty() && newIndex != currentSongIndex) {
+                currentSongIndex = newIndex;
+                Song newSong = songsList.get(currentSongIndex);
+
+                // Bạn cần đảm bảo Song có hàm getContentUri()
+                playNewSongFromUri(newSong.getContentUri().toString());
+            }
+        }
+
         // Luôn gọi startForeground() khi nhận lệnh để duy trì Service
         startForeground(NOTIFICATION_ID, buildNotification());
 
@@ -228,6 +263,20 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             Log.e("MusicService", "Lỗi chung khi phát nhạc: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+
+    public void stopAndRelease() {
+        if (mediaPlayer != null) {
+            if (mediaPlayer.isPlaying()) {
+                mediaPlayer.stop();
+            }
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
+        // Dừng Service Foreground và xóa Notification
+        stopForeground(true);
+        // Yêu cầu Service tự kết thúc
+        stopSelf();
     }
 
     private Notification buildNotification() {

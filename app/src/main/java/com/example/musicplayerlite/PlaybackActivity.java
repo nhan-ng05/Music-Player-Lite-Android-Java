@@ -95,6 +95,21 @@ public class PlaybackActivity extends AppCompatActivity {
         handler.removeCallbacks(updateTimeTask);
     }
 
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+
+        // 1. Dừng nhạc và Service nếu Activity bị hủy
+        if (isBound && musicService != null) {
+            // Gọi phương thức dừng nhạc và Service mà ta vừa tạo
+            musicService.stopAndRelease();
+
+            // 2. Ngắt liên kết Service
+            unbindService(serviceConnection);
+            isBound = false;
+        }
+    }
+
     private void updateUIInitialState() {
         Intent intent = getIntent();
         // Giả sử bạn truyền Title và Artist từ MainActivity

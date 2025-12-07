@@ -11,6 +11,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.IBinder;
+import android.os.Parcelable;
 import android.provider.MediaStore;
 import android.Manifest;
 import android.util.Log;
@@ -37,6 +38,7 @@ public class MainActivity extends AppCompatActivity implements SongAdapter.OnSon
     final String musicFolderPath = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_MUSIC).getAbsolutePath();
     private MusicService musicService;
     private boolean isBound = false;
+    private ArrayList<Song> songsList = new ArrayList<Song>();
 
     private ServiceConnection serviceConnection = new ServiceConnection() {
         @Override
@@ -78,21 +80,45 @@ public class MainActivity extends AppCompatActivity implements SongAdapter.OnSon
 
     @Override
     public void onSongClick(Song song) {
-        // 1. Khởi động Service (Giữ nguyên)
-        Intent serviceIntent = new Intent(this, MusicService.class);
-        serviceIntent.putExtra("SONG_URI", song.getContentUri().toString());
-        serviceIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-        ContextCompat.startForegroundService(this, serviceIntent);
+        // 1. Tìm vị trí của bài hát được click
+        // Bạn cần đảm bảo songsList là biến thành viên đã được load từ loadMusicFiles()
+        int songIndex = songsList.indexOf(song);
 
-        // 2. KHỞI CHẠY PLAYBACK ACTIVITY MỚI
+        if (songIndex == -1) {
+            // Trường hợp không tìm thấy bài hát trong danh sách (Lỗi dữ liệu)
+            Log.e("MainActivity", "Lỗi: Không tìm thấy bài hát trong danh sách đã tải.");
+            return;
+        }
+
+        // 2. KHỞI ĐỘNG SERVICE VỚI DANH SÁCH & INDEX (BẮT BUỘC)
+        Intent serviceIntent = new Intent(this, MusicService.class);
+
+        // Đảm bảo lớp Song đã implements Parcelable!
+        // GỬI TOÀN BỘ DANH SÁCH VÀ VỊ TRÍ HIỆN TẠI
+        serviceIntent.putParcelableArrayListExtra("SONGS_LIST", (ArrayList<? extends Parcelable>) songsList);
+        serviceIntent.putExtra("SONG_INDEX", songIndex);
+
+        // Gửi thông tin để PlaybackActivity hiển thị ban đầu (Không bắt buộc, nhưng tiện)
+        serviceIntent.putExtra("CURRENT_TITLE", song.getName());
+        serviceIntent.putExtra("CURRENT_ARTIST", song.getArtist());
+
+        serviceIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+        // Sử dụng startForegroundService() cho các API mới
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            ContextCompat.startForegroundService(this, serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
+
+        // 3. KHỞI CHẠY PLAYBACK ACTIVITY MỚI
         Intent playbackIntent = new Intent(this, PlaybackActivity.class);
-        // Có thể truyền thêm dữ liệu bài hát nếu cần (dạng Parcelable hoặc chỉ Title/Artist)
         startActivity(playbackIntent);
     }
 
     // Phương thức load nhạc sử dụng MediaStore
     private void loadMusicFiles() {
-        ArrayList<Song> songsList = new ArrayList<>();
+        songsList.clear();
 
         // 1. URI chuẩn để truy vấn các file Audio
         Uri uri = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI;
