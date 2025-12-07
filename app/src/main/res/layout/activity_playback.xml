@@ -1,108 +1,132 @@
 <?xml version="1.0" encoding="utf-8"?>
-<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.coordinatorlayout.widget.CoordinatorLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
-    android:id="@+id/main"
+    android:id="@+id/main_coordinator"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:padding="16dp"
     tools:context=".PlaybackActivity">
 
-    <TextView
-        android:id="@+id/tvTitle"
-        android:layout_width="0dp"
+    <com.google.android.material.appbar.AppBarLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="64dp"
-        android:gravity="center"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textSize="24sp"
-        android:textStyle="bold"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toTopOf="parent"
-        tools:text="Tên bài hát dài" />
+        android:fitsSystemWindows="true">
 
-    <TextView
-        android:id="@+id/tvArtist"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="4dp"
-        android:gravity="center"
-        android:maxLines="1"
-        android:ellipsize="end"
-        android:textSize="18sp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvTitle"
-        tools:text="Tên nghệ sĩ" />
+        <androidx.appcompat.widget.Toolbar
+            android:id="@+id/toolbar_playback"
+            android:layout_width="match_parent"
+            android:layout_height="?attr/actionBarSize"
+            android:background="?attr/colorPrimary"
+            app:titleTextColor="@android:color/white"
+            app:subtitleTextColor="@android:color/white"
+            app:popupTheme="@style/ThemeOverlay.AppCompat.Light"
+            app:theme="@style/ThemeOverlay.AppCompat.Dark.ActionBar" />
 
-    <SeekBar
-        android:id="@+id/seekBar"
-        android:layout_width="0dp"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="32dp"
-        android:paddingStart="0dp"
-        android:paddingEnd="0dp"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvArtist" />
+    </com.google.android.material.appbar.AppBarLayout>
 
-    <TextView
-        android:id="@+id/tvCurrentTime"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textSize="12sp"
-        app:layout_constraintStart_toStartOf="@+id/seekBar"
-        app:layout_constraintTop_toBottomOf="@+id/seekBar"
-        tools:text="00:00" />
-
-    <TextView
-        android:id="@+id/tvDuration"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:textSize="12sp"
-        app:layout_constraintEnd_toEndOf="@+id/seekBar"
-        app:layout_constraintTop_toBottomOf="@+id/seekBar"
-        tools:text="03:20" />
-
-    <ImageButton
-        android:id="@+id/btnPlayPause"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
-        android:layout_marginStart="24dp"
-        android:layout_marginEnd="24dp"
-        android:layout_marginTop="48dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:scaleType="fitCenter"
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/main_content"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
         android:padding="16dp"
-        app:srcCompat="@drawable/pause"
-        app:layout_constraintEnd_toEndOf="parent"
-        app:layout_constraintStart_toStartOf="parent"
-        app:layout_constraintTop_toBottomOf="@+id/tvCurrentTime" />
+        app:layout_behavior="@string/appbar_scrolling_view_behavior">
 
-    <ImageButton
-        android:id="@+id/btnPrevious"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:scaleType="fitCenter"
-        app:srcCompat="@drawable/previous"
-        app:layout_constraintEnd_toStartOf="@+id/btnPlayPause"
-        app:layout_constraintTop_toTopOf="@+id/btnPlayPause"
-        app:layout_constraintBottom_toBottomOf="@+id/btnPlayPause"/>
+        <TextView
+            android:id="@+id/tvTitle"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" tools:text="Tên bài hát dài" />
 
-    <ImageButton
-        android:id="@+id/btnNext"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:background="?attr/selectableItemBackgroundBorderless"
-        android:scaleType="fitCenter"
-        app:srcCompat="@drawable/next"
-        app:layout_constraintStart_toEndOf="@+id/btnPlayPause"
-        app:layout_constraintTop_toTopOf="@+id/btnPlayPause"
-        app:layout_constraintBottom_toBottomOf="@+id/btnPlayPause"/>
+        <TextView
+            android:id="@+id/tvArtist"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="4dp"
+            android:gravity="center"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:textSize="18sp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tvTitle"
+            tools:text="Tên nghệ sĩ" />
 
-</androidx.constraintlayout.widget.ConstraintLayout>
+        <SeekBar
+            android:id="@+id/seekBar"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="32dp"
+            android:paddingStart="0dp"
+            android:paddingEnd="0dp"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tvArtist" />
+
+        <TextView
+            android:id="@+id/tvCurrentTime"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="12sp"
+            app:layout_constraintStart_toStartOf="@+id/seekBar"
+            app:layout_constraintTop_toBottomOf="@+id/seekBar"
+            tools:text="00:00" />
+
+        <TextView
+            android:id="@+id/tvDuration"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textSize="12sp"
+            app:layout_constraintEnd_toEndOf="@+id/seekBar"
+            app:layout_constraintTop_toBottomOf="@+id/seekBar"
+            tools:text="03:20" />
+
+        <ImageButton
+            android:id="@+id/btnPlayPause"
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:layout_marginStart="24dp"
+            android:layout_marginEnd="24dp"
+            android:layout_marginTop="48dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            android:padding="16dp"
+            app:srcCompat="@drawable/pause"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/tvCurrentTime" />
+
+        <ImageButton
+            android:id="@+id/btnPrevious"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            app:srcCompat="@drawable/previous"
+            app:layout_constraintEnd_toStartOf="@+id/btnPlayPause"
+            app:layout_constraintTop_toTopOf="@+id/btnPlayPause"
+            app:layout_constraintBottom_toBottomOf="@+id/btnPlayPause"/>
+
+        <ImageButton
+            android:id="@+id/btnNext"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:scaleType="fitCenter"
+            app:srcCompat="@drawable/next"
+            app:layout_constraintStart_toEndOf="@+id/btnPlayPause"
+            app:layout_constraintTop_toTopOf="@+id/btnPlayPause"
+            app:layout_constraintBottom_toBottomOf="@+id/btnPlayPause"/>
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</androidx.coordinatorlayout.widget.CoordinatorLayout>

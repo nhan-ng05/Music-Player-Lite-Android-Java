@@ -7,17 +7,20 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.view.MenuItem;
 import android.widget.ImageButton;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.Toolbar;
 import androidx.core.graphics.Insets;
 import androidx.core.view.ViewCompat;
 import androidx.core.view.WindowInsetsCompat;
 
 import java.util.Locale;
+import java.util.Objects;
 
 public class PlaybackActivity extends AppCompatActivity {
     private TextView tvTitle, tvArtist, tvCurrentTime, tvDuration;
@@ -93,21 +96,6 @@ public class PlaybackActivity extends AppCompatActivity {
             isBound = false;
         }
         handler.removeCallbacks(updateTimeTask);
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-
-        // 1. Dừng nhạc và Service nếu Activity bị hủy
-        if (isBound && musicService != null) {
-            // Gọi phương thức dừng nhạc và Service mà ta vừa tạo
-            musicService.stopAndRelease();
-
-            // 2. Ngắt liên kết Service
-            unbindService(serviceConnection);
-            isBound = false;
-        }
     }
 
     private void updateUIInitialState() {
@@ -198,6 +186,11 @@ public class PlaybackActivity extends AppCompatActivity {
         EdgeToEdge.enable(this);
         setContentView(R.layout.activity_playback);
 
+        Toolbar toolbar = findViewById(R.id.toolbar_playback);
+        setSupportActionBar(toolbar);
+        Objects.requireNonNull(getSupportActionBar()).setTitle("Đang phát");
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+
         tvTitle = findViewById(R.id.tvTitle);
         tvArtist = findViewById(R.id.tvArtist); // Cần thêm vào layout và code
         tvCurrentTime = findViewById(R.id.tvCurrentTime); // Đã có trong layout
@@ -206,36 +199,16 @@ public class PlaybackActivity extends AppCompatActivity {
         btnPlayPause = findViewById(R.id.btnPlayPause);
         btnNext = findViewById(R.id.btnNext);
         btnPrevious = findViewById(R.id.btnPrevious);
+    }
 
-        btnPlayPause.setOnClickListener(v -> {
-            if (isBound && musicService != null) {
-                if (musicService.isPlaying()) {
-                    musicService.pausePlayback();
-                } else {
-                    musicService.startPlayback();
-                }
-            }
-        });
-
-        btnNext.setOnClickListener(v -> {
-            if (isBound && musicService != null) {
-                musicService.playNextSong();
-                updateCurrentSongUI(); // <-- Dùng hàm mới để cập nhật tên bài
-            }
-        });
-
-        btnPrevious.setOnClickListener(v -> {
-            if (isBound && musicService != null) {
-                musicService.playPreviousSong();
-                updateCurrentSongUI(); // <-- Dùng hàm mới để cập nhật tên bài
-            }
-        });
-
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(R.id.main), (v, insets) -> {
-            Insets systemBars = insets.getInsets(WindowInsetsCompat.Type.systemBars());
-            v.setPadding(systemBars.left, systemBars.top, systemBars.right, systemBars.bottom);
-            return insets;
-        });
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        if (item.getItemId() == android.R.id.home) {
+            // Khi nhấn nút Quay lại (mũi tên), gọi finish() để đóng Activity
+            finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private String formatDuration(int durationMs) {
