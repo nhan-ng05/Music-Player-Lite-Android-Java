@@ -23,140 +23,98 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class MusicService extends Service implements MediaPlayer.OnPreparedListener, MediaPlayer.OnErrorListener {
+
     public static final String ACTION_PLAY = "com.example.musicplayerlite.ACTION_PLAY";
     public static final String ACTION_PAUSE = "com.example.musicplayerlite.ACTION_PAUSE";
     public static final String ACTION_PREVIOUS = "com.example.musicplayerlite.ACTION_PREVIOUS";
     public static final String ACTION_NEXT = "com.example.musicplayerlite.ACTION_NEXT";
     public static final String ACTION_STOP = "com.example.musicplayerlite.ACTION_STOP";
+
     private static final String CHANNEL_ID = "MusicPlayerChannel";
     private static final int NOTIFICATION_ID = 1;
 
     private MediaPlayer mediaPlayer;
-    private List<Song> songsList = new ArrayList<>(); // Danh sách bài hát
+    private List<Song> songsList = new ArrayList<>();
     private int currentSongIndex = -1;
-
-    // Song hiện tại đang phát
     private Song currentSong;
 
-    // Trong MusicService.java (Thêm lớp nội bộ này)
     public class MusicBinder extends Binder {
         MusicService getService() {
-            return MusicService.this; // Trả về đối tượng MusicService
+            return MusicService.this;
         }
     }
 
-    // Hàm tạo PendingIntent
-    private PendingIntent createActionIntent(String action) {
-        Intent intent = new Intent(this, MusicService.class);
-        intent.setAction(action);
-        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
-    }
-
-    // Thêm biến Binder
     private final IBinder musicBinder = new MusicBinder();
-
-    public void playNewSong(String path) {
-        try {
-            mediaPlayer.reset();
-
-            // 1. Chuyển đường dẫn thành Content URI (Cách tốt nhất cho MediaStore)
-            Uri uri = Uri.parse(path);
-
-            // 2. Thiết lập Data Source bằng URI
-            mediaPlayer.setDataSource(getApplicationContext(), uri);
-            mediaPlayer.prepareAsync();
-        } catch (IOException e) {
-            Log.e("MusicService", "Lỗi IO khi đặt Data Source: " + e.getMessage());
-            // Thường xảy ra nếu đường dẫn không thể truy cập
-            stopSelf(); // Dừng Service nếu không thể phát
-        } catch (IllegalArgumentException e) {
-            Log.e("MusicService", "Lỗi đối số Data Source (URI không hợp lệ): " + e.getMessage());
-            stopSelf();
-        }
-    }
 
     @Override
     public void onCreate() {
         super.onCreate();
-        // Khởi tạo MediaPlayer
+
+        createNotificationChannel();   // *** FIX QUAN TRỌNG ***
+
         mediaPlayer = new MediaPlayer();
         mediaPlayer.setOnPreparedListener(this);
         mediaPlayer.setOnErrorListener(this);
         mediaPlayer.setWakeMode(getApplicationContext(), android.os.PowerManager.PARTIAL_WAKE_LOCK);
     }
 
-    @Override
-    public void onPrepared(MediaPlayer mp) {
-        // Chuẩn bị xong, bắt đầu phát nhạc
-        mp.start();
-        // Sau này bạn sẽ cập nhật Notification tại đây
-    }
-
-    @Override
-    public boolean onError(MediaPlayer mp, int what, int extra) {
-        // Xử lý lỗi
-        Log.e("MusicService", "MediaPlayer error: " + what);
-        return false;
-    }
-
+    // --- Notification Channel ---
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
                     CHANNEL_ID,
                     "Kênh Phát Nhạc",
-                    NotificationManager.IMPORTANCE_DEFAULT);
+                    NotificationManager.IMPORTANCE_LOW
+            );
             channel.setDescription("Kênh thông báo cho ứng dụng phát nhạc.");
-
-            NotificationManager notificationManager = getSystemService(NotificationManager.class);
-            if (notificationManager != null) {
-                notificationManager.createNotificationChannel(channel);
-            }
+            NotificationManager manager = getSystemService(NotificationManager.class);
+            manager.createNotificationChannel(channel);
         }
     }
 
     @SuppressLint("NewApi")
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        // 1. NHẬN DANH SÁCH BÀI HÁT VÀ INDEX MỚI (Từ MainActivity)
+
+        // --- Nhận danh sách bài hát và chỉ số ---
         if (intent != null && intent.hasExtra("SONGS_LIST") && intent.hasExtra("SONG_INDEX")) {
 
             int newIndex = intent.getIntExtra("SONG_INDEX", 0);
+
             List<Song> newSongsList = null;
 
-            // 1a. Nhận danh sách bài hát
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                // Dùng phương thức an toàn (API 33+)
                 newSongsList = intent.getParcelableArrayListExtra("SONGS_LIST", Song.class);
             } else {
-                // Dùng phương thức cũ (Dưới API 33)
-                // 🔥 KHẮC PHỤC LỖI: SỬ DỤNG @SuppressWarnings ĐỂ KHẮC PHỤC LỖI ÉP KIỂU
-                @SuppressWarnings("unchecked")
-                ArrayList<Song> parcelableList = (ArrayList<Song>) intent.getParcelableArrayListExtra("SONGS_LIST", Song.class);
-                newSongsList = parcelableList;
+                ArrayList<?> raw = intent.getParcelableArrayListExtra("SONGS_LIST");
+                if (raw != null) {
+                    newSongsList = new ArrayList<>();
+                    for (Object obj : raw) {
+                        if (obj instanceof Song) {
+                            newSongsList.add((Song) obj);
+                        }
+                    }
+                }
             }
 
-            // 1b. Cập nhật songsList chỉ khi danh sách mới được nhận
+
             if (newSongsList != null && !newSongsList.isEmpty()) {
                 songsList = newSongsList;
             }
 
-            // 1c. Kiểm tra và Phát bài hát mới nếu Index thay đổi
-            if (songsList != null && !songsList.isEmpty() && newIndex != currentSongIndex) {
+            if (!songsList.isEmpty() && newIndex != currentSongIndex) {
                 currentSongIndex = newIndex;
                 Song newSong = songsList.get(currentSongIndex);
-
-                // Bạn cần đảm bảo Song có hàm getContentUri()
                 playNewSongFromUri(newSong.getContentUri().toString());
             }
         }
 
-        // Luôn gọi startForeground() khi nhận lệnh để duy trì Service
+        // --- StartForeground CHỈ GỌI 1 LẦN ---
         startForeground(NOTIFICATION_ID, buildNotification());
 
+        // --- Xử lý Action ---
         if (intent != null && intent.getAction() != null) {
-            String action = intent.getAction();
-
-            switch (action) {
+            switch (intent.getAction()) {
                 case ACTION_PLAY:
                     startPlayback();
                     break;
@@ -164,173 +122,141 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                     pausePlayback();
                     break;
                 case ACTION_PREVIOUS:
-                    playPreviousSong(); // Cần thêm hàm này
+                    playPreviousSong();
                     break;
                 case ACTION_NEXT:
-                    playNextSong(); // Cần thêm hàm này
+                    playNextSong();
                     break;
                 case ACTION_STOP:
-                    stopSelf(); // Dừng Service hoàn toàn
+                    stopSelf();
                     break;
             }
         } else if (intent != null && intent.hasExtra("SONG_URI")) {
-            // Xử lý khi Intent có URI (tức là người dùng chọn bài mới)
-            String songUri = intent.getStringExtra("SONG_URI");
-            playNewSongFromUri(songUri);
+            playNewSongFromUri(intent.getStringExtra("SONG_URI"));
         }
 
-        // Luôn cập nhật Notification sau khi thực hiện bất kỳ lệnh nào
+        // --- Cập nhật notification ---
         updateNotification();
 
         return START_STICKY;
     }
 
-    public String getCurrentSongTitle() {
-        // Giả sử bạn có biến currentSong hoặc songsList.get(currentSongIndex)
-        if (currentSongIndex >= 0 && currentSongIndex < songsList.size()) {
-            return songsList.get(currentSongIndex).getName(); // Giả sử Song có hàm getTitle()
+    // --- Build Notification ---
+    private Notification buildNotification() {
+
+        if (songsList.isEmpty() || currentSongIndex < 0 || currentSongIndex >= songsList.size()) {
+            return new NotificationCompat.Builder(this, CHANNEL_ID)
+                    .setContentTitle("Music Player")
+                    .setContentText("No song playing")
+                    .setSmallIcon(R.drawable.note)   // *** icon của bạn ***
+                    .build();
         }
-        return "Unknown Title";
+
+        Song song = songsList.get(currentSongIndex);
+
+        boolean isPlaying = mediaPlayer != null && mediaPlayer.isPlaying();
+
+        PendingIntent prevIntent = createPendingIntent(ACTION_PREVIOUS);
+        PendingIntent playIntent = createPendingIntent(isPlaying ? ACTION_PAUSE : ACTION_PLAY);
+        PendingIntent nextIntent = createPendingIntent(ACTION_NEXT);
+
+        return new NotificationCompat.Builder(this, CHANNEL_ID)
+                .setSmallIcon(R.drawable.note)   // *** icon của bạn, không sửa ***
+                .setContentTitle(song.getName())
+                .setContentText(song.getArtist())
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setPriority(NotificationCompat.PRIORITY_LOW)
+
+                .addAction(R.drawable.previous, "Previous", prevIntent)
+                .addAction(isPlaying ? R.drawable.pause : R.drawable.play,
+                        isPlaying ? "Pause" : "Play",
+                        playIntent)
+                .addAction(R.drawable.next, "Next", nextIntent)
+
+                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
+                        .setShowActionsInCompactView(0, 1, 2))
+
+                .build();
     }
 
-    public String getCurrentSongArtist() {
-        if (currentSongIndex >= 0 && currentSongIndex < songsList.size()) {
-            return songsList.get(currentSongIndex).getArtist(); // Giả sử Song có hàm getArtist()
-        }
-        return "Unknown Artist";
+    // --- updateNotification KHÔNG ĐƯỢC GỌI startForeground() ---
+    private void updateNotification() {
+        NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+        nm.notify(NOTIFICATION_ID, buildNotification());
+    }
+
+    private PendingIntent createPendingIntent(String action) {
+        Intent intent = new Intent(this, MusicService.class);
+        intent.setAction(action);
+        return PendingIntent.getService(
+                this,
+                action.hashCode(),
+                intent,
+                PendingIntent.FLAG_IMMUTABLE
+        );
+    }
+
+    // --- Media Control ---
+    @Override
+    public void onPrepared(MediaPlayer mp) {
+        mp.start();
+        updateNotification();
+    }
+
+    @Override
+    public boolean onError(MediaPlayer mp, int what, int extra) {
+        Log.e("MusicService", "MediaPlayer error: " + what);
+        return false;
+    }
+
+    public void startPlayback() {
+        if (mediaPlayer != null) mediaPlayer.start();
+        updateNotification();
+    }
+
+    public void pausePlayback() {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) mediaPlayer.pause();
+        updateNotification();
     }
 
     public void playNextSong() {
         if (songsList.isEmpty()) return;
 
         currentSongIndex = (currentSongIndex + 1) % songsList.size();
-        Song nextSong = songsList.get(currentSongIndex);
-
-        // Giả sử playNewSongFromUri nhận URI String và cần cập nhật Notification
-        playNewSongFromUri(nextSong.getContentUri().toString());
+        playNewSongFromUri(songsList.get(currentSongIndex).getContentUri().toString());
     }
 
     public void playPreviousSong() {
         if (songsList.isEmpty()) return;
 
         currentSongIndex--;
-        if (currentSongIndex < 0) {
-            currentSongIndex = songsList.size() - 1; // Phát lại bài cuối cùng
-        }
-        Song previousSong = songsList.get(currentSongIndex);
+        if (currentSongIndex < 0) currentSongIndex = songsList.size() - 1;
 
-        playNewSongFromUri(previousSong.getContentUri().toString());
+        playNewSongFromUri(songsList.get(currentSongIndex).getContentUri().toString());
     }
 
     private void playNewSongFromUri(String uriString) {
         try {
-            // 1. Dọn dẹp MediaPlayer cũ (nếu có)
             if (mediaPlayer == null) {
                 mediaPlayer = new MediaPlayer();
-
-                // Thiết lập Audio Attributes để hệ thống biết đây là nhạc
-                mediaPlayer.setAudioAttributes(
-                        new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_MEDIA)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                                .build()
-                );
-
-                // Thiết lập Listener: Khi nhạc đã SẴN SÀNG để phát
-                mediaPlayer.setOnPreparedListener(mp -> {
-                    mp.start();
-                    updateNotification(); // Bắt đầu phát -> Cập nhật Notification
-                });
-
-                // Thiết lập Listener: Khi nhạc kết thúc -> Tự động chuyển bài
-                mediaPlayer.setOnCompletionListener(mp -> playNextSong());
-
             } else {
-                mediaPlayer.reset(); // Đặt lại MediaPlayer để tải nguồn nhạc mới
+                mediaPlayer.reset();
             }
 
-            // 2. Thiết lập nguồn dữ liệu mới
+            mediaPlayer.setAudioAttributes(
+                    new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_MEDIA)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .build()
+            );
+
             Uri uri = Uri.parse(uriString);
             mediaPlayer.setDataSource(getApplicationContext(), uri);
-
-            // 3. Chuẩn bị phát nhạc (bất đồng bộ)
             mediaPlayer.prepareAsync();
 
-        } catch (IOException e) {
-            Log.e("MusicService", "Lỗi IO khi đặt nguồn nhạc: " + e.getMessage());
-            e.printStackTrace();
         } catch (Exception e) {
-            Log.e("MusicService", "Lỗi chung khi phát nhạc: " + e.getMessage());
-            e.printStackTrace();
+            Log.e("MusicService", "Lỗi phát nhạc: " + e.getMessage());
         }
-    }
-
-    public void stopAndRelease() {
-        if (mediaPlayer != null) {
-            if (mediaPlayer.isPlaying()) {
-                mediaPlayer.stop();
-            }
-            mediaPlayer.release();
-            mediaPlayer = null;
-        }
-        // Dừng Service Foreground và xóa Notification
-        stopForeground(true);
-        // Yêu cầu Service tự kết thúc
-        stopSelf();
-    }
-
-    private Notification buildNotification() {
-        // Nếu danh sách rỗng hoặc index không hợp lệ, trả về một Notification cơ bản
-        if (songsList.isEmpty() || currentSongIndex < 0 || currentSongIndex >= songsList.size()) {
-            return new NotificationCompat.Builder(this, CHANNEL_ID)
-                    .setContentTitle("Music Player")
-                    .setContentText("No song playing")
-                    .setSmallIcon(R.drawable.note) // Đảm bảo bạn có icon này
-                    .build();
-        }
-
-        Song currentSong = songsList.get(currentSongIndex);
-
-        // 1. Tạo các PendingIntent cho hành động điều khiển
-        PendingIntent pIntentPause = createPendingIntent(ACTION_PAUSE);
-        PendingIntent pIntentNext = createPendingIntent(ACTION_NEXT);
-        PendingIntent pIntentPrevious = createPendingIntent(ACTION_PREVIOUS);
-
-        // 2. Xác định trạng thái nút Play/Pause
-        boolean isPlaying = mediaPlayer != null && mediaPlayer.isPlaying();
-        int playPauseIcon = isPlaying ? R.drawable.pause : R.drawable.play; // Đảm bảo bạn có 2 icon này
-        PendingIntent pIntentPlayPause = isPlaying ? pIntentPause : createPendingIntent(ACTION_PLAY);
-
-
-        // 3. Xây dựng Notification
-        NotificationCompat.Builder builder = new NotificationCompat.Builder(this, CHANNEL_ID)
-                .setSmallIcon(R.drawable.note)
-                .setContentTitle(currentSong.getName())
-                .setContentText(currentSong.getArtist())
-                .setPriority(NotificationCompat.PRIORITY_LOW)
-                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-                // Thêm các nút điều khiển
-                .addAction(R.drawable.previous, "Previous", pIntentPrevious)
-                .addAction(playPauseIcon, isPlaying ? "Pause" : "Play", pIntentPlayPause)
-                .addAction(R.drawable.next, "Next", pIntentNext)
-                // Thiết lập kiểu Notification Media
-                .setStyle(new androidx.media.app.NotificationCompat.MediaStyle()
-                        .setShowActionsInCompactView(0, 1, 2) // Hiển thị 3 nút Previous, Play/Pause, Next
-                        .setMediaSession(null)); // Có thể dùng MediaSession, nhưng ta dùng cách đơn giản hơn ở đây
-
-        return builder.build();
-    }
-
-    private void updateNotification() {
-        startForeground(NOTIFICATION_ID, buildNotification());
-    }
-
-    // Hàm trợ giúp để tạo PendingIntent (Cần thiết cho các action)
-    private PendingIntent createPendingIntent(String action) {
-        Intent intent = new Intent(action);
-        intent.setClass(this, MusicService.class);
-        // Lưu ý: FLAG_IMMUTABLE là yêu cầu bắt buộc từ Android 12 trở lên
-        return PendingIntent.getService(this, 0, intent, PendingIntent.FLAG_IMMUTABLE);
     }
 
     @Override
@@ -338,30 +264,16 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         return musicBinder;
     }
 
-    // Yêu cầu 5: Dừng Service khi nhạc tắt và Service bị hủy
     @Override
     public void onDestroy() {
         if (mediaPlayer != null) {
-            if (mediaPlayer.isPlaying()) {
-                mediaPlayer.stop();
-            }
+            if (mediaPlayer.isPlaying()) mediaPlayer.stop();
             mediaPlayer.release();
-            mediaPlayer = null;
         }
         super.onDestroy();
     }
 
-    // Trong MusicService.java (Thêm các phương thức public này)
-    public void startPlayback() {
-        if (mediaPlayer != null) mediaPlayer.start();
-        // Cập nhật Notification và trạng thái UI
-    }
-
-    public void pausePlayback() {
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) mediaPlayer.pause();
-        // Cập nhật Notification và trạng thái UI
-    }
-
+    // --- Helper ---
     public int getCurrentPosition() {
         return (mediaPlayer != null) ? mediaPlayer.getCurrentPosition() : 0;
     }
@@ -374,7 +286,23 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         return mediaPlayer != null && mediaPlayer.isPlaying();
     }
 
-    public void seekTo(int position) {
-        if (mediaPlayer != null) mediaPlayer.seekTo(position);
+    public void seekTo(int pos) {
+        if (mediaPlayer != null) mediaPlayer.seekTo(pos);
     }
+    public String getCurrentSongTitle() {
+        if (songsList == null || songsList.isEmpty() ||
+                currentSongIndex < 0 || currentSongIndex >= songsList.size()) {
+            return "";
+        }
+        return songsList.get(currentSongIndex).getName();
+    }
+
+    public String getCurrentSongArtist() {
+        if (songsList == null || songsList.isEmpty() ||
+                currentSongIndex < 0 || currentSongIndex >= songsList.size()) {
+            return "";
+        }
+        return songsList.get(currentSongIndex).getArtist();
+    }
+
 }

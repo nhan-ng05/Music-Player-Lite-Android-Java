@@ -71,6 +71,7 @@ public class PlaybackActivity extends AppCompatActivity {
 
             // Cập nhật trạng thái UI ban đầu
             updateUIInitialState();
+            updateCurrentSongUI();
         }
 
         @Override
@@ -150,10 +151,12 @@ public class PlaybackActivity extends AppCompatActivity {
         // 2. Logic cho nút Next/Previous
         btnNext.setOnClickListener(v -> {
             if (isBound && musicService != null) musicService.playNextSong();
+            updateCurrentSongUI();
         });
 
         btnPrevious.setOnClickListener(v -> {
             if (isBound && musicService != null) musicService.playPreviousSong();
+            updateCurrentSongUI();
         });
 
         // 3. Seek Bar (Đã sửa lỗi biên dịch)
