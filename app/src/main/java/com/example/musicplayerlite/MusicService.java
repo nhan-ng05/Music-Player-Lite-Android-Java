@@ -97,7 +97,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                 }
             }
 
-
             if (newSongsList != null && !newSongsList.isEmpty()) {
                 songsList = newSongsList;
             }
@@ -109,10 +108,8 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
             }
         }
 
-        // --- StartForeground CHỈ GỌI 1 LẦN ---
         startForeground(NOTIFICATION_ID, buildNotification());
 
-        // --- Xử lý Action ---
         if (intent != null && intent.getAction() != null) {
             switch (intent.getAction()) {
                 case ACTION_PLAY:
@@ -179,7 +176,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
                 .build();
     }
 
-    // --- updateNotification KHÔNG ĐƯỢC GỌI startForeground() ---
     private void updateNotification() {
         NotificationManager nm = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
         nm.notify(NOTIFICATION_ID, buildNotification());
@@ -196,7 +192,6 @@ public class MusicService extends Service implements MediaPlayer.OnPreparedListe
         );
     }
 
-    // --- Media Control ---
     @Override
     public void onPrepared(MediaPlayer mp) {
         mp.start();

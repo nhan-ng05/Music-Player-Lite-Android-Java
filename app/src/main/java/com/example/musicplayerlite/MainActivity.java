@@ -80,8 +80,7 @@ public class MainActivity extends AppCompatActivity implements SongAdapter.OnSon
 
     @Override
     public void onSongClick(Song song) {
-        // 1. Tìm vị trí của bài hát được click
-        // Bạn cần đảm bảo songsList là biến thành viên đã được load từ loadMusicFiles()
+        // tìm vị trí của bài hát được click
         int songIndex = songsList.indexOf(song);
 
         if (songIndex == -1) {
@@ -90,26 +89,19 @@ public class MainActivity extends AppCompatActivity implements SongAdapter.OnSon
             return;
         }
 
-        // 2. KHỞI ĐỘNG SERVICE VỚI DANH SÁCH & INDEX (BẮT BUỘC)
         Intent serviceIntent = new Intent(this, MusicService.class);
 
-        // Đảm bảo lớp Song đã implements Parcelable!
-        // GỬI TOÀN BỘ DANH SÁCH VÀ VỊ TRÍ HIỆN TẠI
         serviceIntent.putParcelableArrayListExtra("SONGS_LIST", (ArrayList<? extends Parcelable>) songsList);
         serviceIntent.putExtra("SONG_INDEX", songIndex);
 
-        // Gửi thông tin để PlaybackActivity hiển thị ban đầu (Không bắt buộc, nhưng tiện)
+        // Gửi thông tin để PlaybackActivity hiển thị ban đầu
         serviceIntent.putExtra("CURRENT_TITLE", song.getName());
         serviceIntent.putExtra("CURRENT_ARTIST", song.getArtist());
 
         serviceIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-        // Sử dụng startForegroundService() cho các API mới
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            ContextCompat.startForegroundService(this, serviceIntent);
-        } else {
-            startService(serviceIntent);
-        }
+        // Sử dụng startForegroundService() mới
+        ContextCompat.startForegroundService(this, serviceIntent);
 
         // 3. KHỞI CHẠY PLAYBACK ACTIVITY MỚI
         Intent playbackIntent = new Intent(this, PlaybackActivity.class);

@@ -159,7 +159,6 @@ public class PlaybackActivity extends AppCompatActivity {
             updateCurrentSongUI();
         });
 
-        // 3. Seek Bar (Đã sửa lỗi biên dịch)
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
